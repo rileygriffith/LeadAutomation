@@ -11,6 +11,7 @@ from google.auth.transport.requests import Request
 
 SCOPES = ['https://mail.google.com/']
 FILTERS = ['office@triumphpm.com']
+PHONE_REGEX = re.compile('^(\+\d{1,2}\s)?\(?\d{3}\)?[\s.-]\d{3}[\s.-]\d{4}$')
 
 def authenticate():
     """ Authorizes user if credentials exist, otherwise
@@ -88,9 +89,14 @@ def main():
             data = payload['parts'][0]['body']['data']
             data = data.replace("-","+").replace("_","/")
             decoded_data = base64.b64decode(data)
+            body = str(decoded_data)
+            #TODO: Match phone numbers and append to output file
+            """contact = PHONE_REGEX.findall(body)
+            print(contact)
             f = open('output.txt', 'a')
-            f.write(str(decoded_data))
+            f.write(contact)
             f.close()
+            """
 
 if __name__ == '__main__':
     main()
