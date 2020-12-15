@@ -35,6 +35,8 @@ EDGEPILOT_PATTERN = re.compile(r'"url" value="(.*)">')
 
 # Global Variables
 SHEET_ROW = 1
+NEXT_PAGE_TOKEN = ''
+MESSAGE_COUNT = 1
 
 def authenticate():
     """ Authorizes user if credentials exist, otherwise
@@ -74,8 +76,13 @@ def get_messages(gmail_service, amount):
     Return:
         messages        -> list containing all messages retrieved
     """
-    result = gmail_service.users().messages().list(maxResults=amount, userId='me').execute()
+    global NEXT_PAGE_TOKEN
+    if NEXT_PAGE_TOKEN == '':
+        result = gmail_service.users().messages().list(maxResults=amount, userId='me').execute()
+    else:
+        result = gmail_service.users().messages().list(maxResults=amount, userId='me', pageToken=NEXT_PAGE_TOKEN).execute()
     messages = result.get('messages')
+    NEXT_PAGE_TOKEN = result.get('nextPageToken')
 
     return messages
 
@@ -89,7 +96,7 @@ def check_headers(sender, date, subject):
     Returns:
         boolean     -> True if email is lead, False otherwise
     """
-    if sender == 'tpmassistant@triumphpm.com':
+    if sender in FILTERS:
         matches = ADDRESS_PATTERN.findall(subject)
         if matches:
             return True
@@ -145,18 +152,19 @@ def parse_data(body, subject):
             r = requests.get(contact_url)
             # For this format redirect link is encrypted in base64, must decrypt
             matches = EDGEPILOT_PATTERN.findall(r.text)
-            redirect_url = base64.urlsafe_b64decode(matches[0])
-            redirect_url = str(redirect_url, 'utf-8')
-            r = requests.get(redirect_url)
-            # Now we can grab info the same way as above
-            matches = EXTERNAL_URL_NAME_PATTERN.findall(r.text)
             if matches:
-                info[0] = matches[0]
-            # Grab phone number from redirect link if needed
-            if info[1] == '':
-                matches = EXTERNAL_URL_NUMBER_PATTERN.findall(r.text)
+                redirect_url = base64.urlsafe_b64decode(matches[0])
+                redirect_url = str(redirect_url, 'utf-8')
+                r = requests.get(redirect_url)
+                # Now we can grab info the same way as above
+                matches = EXTERNAL_URL_NAME_PATTERN.findall(r.text)
                 if matches:
-                    info[1] = matches[0]
+                    info[0] = matches[0]
+                # Grab phone number from redirect link if needed
+                if info[1] == '':
+                    matches = EXTERNAL_URL_NUMBER_PATTERN.findall(r.text)
+                    if matches:
+                        info[1] = matches[0]
     # Parse subject line for name if not grabbed by previous operation
     """ Different subject line formats:
         ...New Lead: X interested... (used by Triumph PM)
@@ -284,10 +292,12 @@ def filter_messages(messages, gmail_service, sheets_service):
     Returns:
         None
     """
+    global MESSAGE_COUNT
     # Iterate through messages queue and parse content
-    for i,msg in enumerate(messages):
+    for msg in messages:
         # Get message using id 
-        print('Processing email #' + str(i+1))
+        print('Processing email #' + str(MESSAGE_COUNT))
+        MESSAGE_COUNT += 1
         text = gmail_service.users().messages().get(userId='me', id=msg['id']).execute()
         # Get header from payload
         payload = text['payload']
@@ -311,7 +321,6 @@ def filter_messages(messages, gmail_service, sheets_service):
             message_body = read_message(payload)
             # Call parse_data function to extract contact information, and address of inquiry
             info = parse_data(message_body, subject)
-            print(info)
             # Write to Google Sheets and delete email if true
             if write_to_sheet(sheets_service, info):
                 # gmail_service.users().messages().delete(userId='me', id=msg['id']).execute()
@@ -321,12 +330,25 @@ def main():
     number_to_fetch = input("How many recent emails should be processed: ")
     # Authenticate with user and get credentials
     creds = authenticate()
+    
     # Connect to Gmail API and use service object to retrieve messages
     gmail_service = build('gmail', 'v1', credentials=creds)
     sheets_service = build('sheets', 'v4', credentials=creds)
-    messages = get_messages(gmail_service, number_to_fetch)
-    
-    filter_messages(messages, gmail_service, sheets_service)
+    # If less than 500 messages requested
+    remaining = int(number_to_fetch)
+    if remaining < 500 and remaining > 0:
+        messages = get_messages(gmail_service, str(remaining))
+        filter_messages(messages, gmail_service, sheets_service)
+    # Gmail API messages GET call returns maximum of 500 messages
+    # In this case we need multiple iterations
+    elif remaining > 500:
+        for _ in range(int(remaining/500)):
+            messages = get_messages(gmail_service, str(remaining))
+            filter_messages(messages, gmail_service, sheets_service)
+            remaining -= 500
+    else:
+        print('Invalid input. Exiting program...')
+        exit
     print("Finished parsing " + str(number_to_fetch) + " emails. Exiting program successfully...")
 
 if __name__ == '__main__':
