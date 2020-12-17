@@ -26,7 +26,7 @@ SHEET_ID = '1Yfl1stekowIhbVqM5ofSzb4We7Z69n7_eoELsEQlOY4'
 ADDRESS_PATTERN = re.compile(" in (.*)| for (.*)| about (.*)")
 PHONE_PATTERN = re.compile(r".*?(\(\d{3}\D{0,3}\d{3}\D{0,3}\d{4}).*?", re.S)
 EMAIL_PATTERN = re.compile(r'mailto:(\S+@\S+)"')
-EMAIL_PATTERN2 = re.compile(r'(\w*?@\w*?\.[a-z]{2,4})')
+EMAIL_PATTERN2 = re.compile(r'\n(\S+@\S+)\r\n')
 CONTACT_URL_PATTERN1 = re.compile(r'(https://www.zillow.com/rental-manager/inquiry-contact.*)>')
 CONTACT_URL_PATTERN2 = re.compile(r'<(.*https://www.zillow.com/rental-manager/inquiry-contact.*)>')
 EXTERNAL_URL_NAME_PATTERN = re.compile(r'Text-h1">(.*?)</div>')
@@ -133,35 +133,19 @@ def parse_data(body, subject):
             if email not in PMCONTACTS:
                 info[1] = email
                 break
+        # Second email format typically found in Lorraine Hayes leads
         matches = EMAIL_PATTERN2.findall(body)
         for email in matches:
             if email not in PMCONTACTS:
                 info[1] = email
                 break
-    # Parse subject line for name if not grabbed by previous operation
-    """ Different subject line formats:
-        ...New Lead: X interested... (used by Triumph PM)
-    """
-    if info[0] == '':
-        matches = NAME_PATTERN_SUBJECT.findall(subject)
-        if len(matches) > 0:
-            info[0] = matches[0]
-
-    # Parse email body for contact name if not in subject line or external url
-    if info[0] == '':
-        matches = NAME_PATTERN_EMAIL.findall(body)
-        if len(matches) > 0 and matches[0][0] != '':
-            info[0] = ''.join(matches[0].splitlines())
-        elif len(matches) > 0 and matches[0][1] != '':
-            info[0] = matches[0][1]
-        else:
-            info[0] = 'No Name Provided'
     # If none of the above, info is embedded in hyperlink and requests are needed
     if info[0] == '':
         matches = CONTACT_URL_PATTERN1.findall(body)
         if matches:
             contact_url = matches[0]
             r = requests.get(contact_url)
+            # Grab name from external url
             matches = EXTERNAL_URL_NAME_PATTERN.findall(r.text)
             if matches:
                 info[0] = matches[0]
@@ -190,13 +174,30 @@ def parse_data(body, subject):
                     matches = EXTERNAL_URL_NUMBER_PATTERN.findall(r.text)
                     if matches:
                         info[1] = matches[0]
-    
+    # Parse subject line for name if not grabbed by previous operation
+    """ Different subject line formats:
+        ...New Lead: X interested... (used by Triumph PM)
+    """
+    if info[0] == '':
+        matches = NAME_PATTERN_SUBJECT.findall(subject)
+        if len(matches) > 0:
+            info[0] = matches[0]
+    # Parse email body for contact name if not in subject line or external url
+    if info[0] == '':
+        matches = NAME_PATTERN_EMAIL.findall(body)
+        if len(matches) > 0 and matches[0][0] != '':
+            info[0] = ''.join(matches[0].splitlines())
+        elif len(matches) > 0 and matches[0][1] != '':
+            info[0] = matches[0][1]
+        else:
+            info[0] = 'No Name Provided'
     # Parse subject line for address of inquiry
     matches = ADDRESS_PATTERN.findall(subject)
     for item in matches[0]:
         if item != '':
             info[2] = item
-    
+    if info[1] == '':
+        print(body)
     return tuple(info)
 
 def decode(text):
