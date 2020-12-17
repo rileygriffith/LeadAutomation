@@ -2,4 +2,8 @@ This tool serves to extract contact information from specific contacts using Gma
 
 To use, program will prompt user to input the amount of emails they want to parse, and get to work. Program has built in list of senders to parse data from, but this could easily be changed
 
-Note: Must already have a Google Sheets document and ID coded into the program (variable called "SHEETS_ID)
+Files:
+    README.md       ->  README file
+    parse_inbox.py  ->  Main file, takes in user input on number of messages to parse and proceeds appropriately
+
+Note: Must already have a Google Sheets document and ID hard coded into the program (variable called "SHEETS_ID")

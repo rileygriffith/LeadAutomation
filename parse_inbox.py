@@ -13,18 +13,20 @@ from google.auth.transport.requests import Request
 # Constants
 
 SCOPES = ['https://mail.google.com/', 'https://www.googleapis.com/auth/spreadsheets']
-FILTERS = ['office@triumphpm.com', 'tpmassistant@triumphpm.com', 'wasim@faraneshlv.com', 'lorraine@iresvegas.com']
+FILTERS = ['office@triumphpm.com', 'tpmassistant@triumphpm.com', 'wasim@faraneshlv.com', 'lorraine@iresvegas.com',
+            'leasing@total-re.com']
 
 PMCONTACTS = ['office@triumphpm.com', 'leasingagents@triumphpm.com', 'Office@triumphpm.com',
                 'guestcards@appfolio.com', 'contact@triumphpm.com', '(702) 367-2323', '(702) 816-8090',
-                '(702) 250-5958', '(888) 658-7368']
+                '(702) 250-5958', '(888) 658-7368', 'Lorraine@iresvegas.com', 'lorraine@iresvegas.com']
 
 SHEET_ID = '1Yfl1stekowIhbVqM5ofSzb4We7Z69n7_eoELsEQlOY4'
 
 # Global Regex Patterns
-ADDRESS_PATTERN = re.compile("in (.*)|for (.*)|about (.*)")
+ADDRESS_PATTERN = re.compile(" in (.*)| for (.*)| about (.*)")
 PHONE_PATTERN = re.compile(r".*?(\(\d{3}\D{0,3}\d{3}\D{0,3}\d{4}).*?", re.S)
 EMAIL_PATTERN = re.compile(r'mailto:(\S+@\S+)"')
+EMAIL_PATTERN2 = re.compile(r'(\w*?@\w*?\.[a-z]{2,4})')
 CONTACT_URL_PATTERN1 = re.compile(r'(https://www.zillow.com/rental-manager/inquiry-contact.*)>')
 CONTACT_URL_PATTERN2 = re.compile(r'<(.*https://www.zillow.com/rental-manager/inquiry-contact.*)>')
 EXTERNAL_URL_NAME_PATTERN = re.compile(r'Text-h1">(.*?)</div>')
@@ -131,7 +133,30 @@ def parse_data(body, subject):
             if email not in PMCONTACTS:
                 info[1] = email
                 break
-    # If none of the above, contact info is embedded in a hyperlink
+        matches = EMAIL_PATTERN2.findall(body)
+        for email in matches:
+            if email not in PMCONTACTS:
+                info[1] = email
+                break
+    # Parse subject line for name if not grabbed by previous operation
+    """ Different subject line formats:
+        ...New Lead: X interested... (used by Triumph PM)
+    """
+    if info[0] == '':
+        matches = NAME_PATTERN_SUBJECT.findall(subject)
+        if len(matches) > 0:
+            info[0] = matches[0]
+
+    # Parse email body for contact name if not in subject line or external url
+    if info[0] == '':
+        matches = NAME_PATTERN_EMAIL.findall(body)
+        if len(matches) > 0 and matches[0][0] != '':
+            info[0] = ''.join(matches[0].splitlines())
+        elif len(matches) > 0 and matches[0][1] != '':
+            info[0] = matches[0][1]
+        else:
+            info[0] = 'No Name Provided'
+    # If none of the above, info is embedded in hyperlink and requests are needed
     if info[0] == '':
         matches = CONTACT_URL_PATTERN1.findall(body)
         if matches:
@@ -165,32 +190,13 @@ def parse_data(body, subject):
                     matches = EXTERNAL_URL_NUMBER_PATTERN.findall(r.text)
                     if matches:
                         info[1] = matches[0]
-    # Parse subject line for name if not grabbed by previous operation
-    """ Different subject line formats:
-        ...New Lead: X interested... (used by Triumph PM)
-    """
-    if info[0] == '':
-        matches = NAME_PATTERN_SUBJECT.findall(subject)
-        if len(matches) > 0:
-            info[0] = matches[0]
-
-    # Parse email body for contact name if not in subject line or external url
-    if info[0] == '':
-        matches = NAME_PATTERN_EMAIL.findall(body)
-        if len(matches) > 0 and matches[0][0] != '':
-            info[0] = ''.join(matches[0].splitlines())
-        elif len(matches) > 0 and matches[0][1] != '':
-            info[0] = matches[0][1]
-        else:
-            info[0] = 'No Name Provided'
     
     # Parse subject line for address of inquiry
     matches = ADDRESS_PATTERN.findall(subject)
     for item in matches[0]:
         if item != '':
             info[2] = item
-    if info[1] == '':
-        print(body)
+    
     return tuple(info)
 
 def decode(text):
@@ -234,6 +240,30 @@ def read_message(payload):
         print('body has no data.')
     return message
 
+def post_processing(info):
+    """ This function takes info list and performs formatting changes
+    Args:
+        info            -> list of lead contact information
+    Returns:
+        info            -> formatted list of lead contact information
+    """
+    if ' - gmail' in info[0]:
+        info[0] = info[0].replace(' - gmail', '')
+    if ' - icloud' in info[0]:
+        info[0] = info[0].replace(' - icloud', '')
+    if ' - yahoo' in info[0]:
+        info[0] = info[0].replace(' - yahoo', '')
+
+    if info[0] in PMCONTACTS:
+        info[0] = 'No name provided'
+
+    if ':' in info[2]:
+        info[2] = re.sub(r':.*', '', info[2])
+    if '*' in info[2]:
+        info[2] = re.sub(r'\*.*', '', info[2])
+
+    return info
+
 def write_to_sheet(sheets_service, info):
     """ Takes tuple of contact info and writes to specified Google Sheet
     Args:
@@ -250,14 +280,8 @@ def write_to_sheet(sheets_service, info):
         return False
     if info[0] == '':
         info[0] = 'No Name Provided'
-    
     # Post Processing for info strings
-    if ' - gmail' in info[0]:
-        info[0] = info[0].replace(' - gmail', '')
-    if ' - icloud' in info[0]:
-        info[0] = info[0].replace(' - icloud', '')
-    if info[0] in PMCONTACTS:
-        info[0] = 'No name provided'
+    post_processing(info)
     print(info)
     # Iterate through rows to find an empty one
     while(1):
@@ -320,23 +344,26 @@ def filter_messages(messages, gmail_service, sheets_service):
             print('Subject: ' + subject + '\n')
             message_body = read_message(payload)
             # Call parse_data function to extract contact information, and address of inquiry
-            info = parse_data(message_body, subject)
-            # Write to Google Sheets and delete email if true
-            if write_to_sheet(sheets_service, info):
-                # gmail_service.users().messages().delete(userId='me', id=msg['id']).execute()
-                pass
+            # Try-except to handle errors that may terminate program
+            try:
+                info = parse_data(message_body, subject)
+                # Attempts to write to Google Sheets and puts email in trash if successful
+                if write_to_sheet(sheets_service, info):
+                    # gmail_service.users().messages().trash(userId='me', id=msg['id']).execute()
+                    pass
+            except:
+                print('Error processing message #' + str(MESSAGE_COUNT))
 
 def main():
     number_to_fetch = input("How many recent emails should be processed: ")
     # Authenticate with user and get credentials
     creds = authenticate()
-    
     # Connect to Gmail API and use service object to retrieve messages
     gmail_service = build('gmail', 'v1', credentials=creds)
     sheets_service = build('sheets', 'v4', credentials=creds)
     # If less than 500 messages requested
     remaining = int(number_to_fetch)
-    if remaining < 500 and remaining > 0:
+    if remaining <= 500 and remaining > 0:
         messages = get_messages(gmail_service, str(remaining))
         filter_messages(messages, gmail_service, sheets_service)
     # Gmail API messages GET call returns maximum of 500 messages
@@ -349,7 +376,7 @@ def main():
     else:
         print('Invalid input. Exiting program...')
         exit
-    print("Finished parsing " + str(number_to_fetch) + " emails. Exiting program successfully...")
+    print("Finished parsing " + str(number_to_fetch) + " emails. Exiting program...")
 
 if __name__ == '__main__':
     main()
