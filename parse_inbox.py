@@ -14,7 +14,7 @@ from google.auth.transport.requests import Request
 
 SCOPES = ['https://mail.google.com/', 'https://www.googleapis.com/auth/spreadsheets']
 FILTERS = ['office@triumphpm.com', 'tpmassistant@triumphpm.com', 'wasim@faraneshlv.com', 'lorraine@iresvegas.com',
-            'leasing@total-re.com']
+            'leasing@total-re.com', 'juli@market1realty.com', 'yourrealtorbrian@gmail.com']
 
 PMCONTACTS = ['office@triumphpm.com', 'leasingagents@triumphpm.com', 'Office@triumphpm.com',
                 'guestcards@appfolio.com', 'contact@triumphpm.com', '(702) 367-2323', '(702) 816-8090',
@@ -80,9 +80,9 @@ def get_messages(gmail_service, amount):
     """
     global NEXT_PAGE_TOKEN
     if NEXT_PAGE_TOKEN == '':
-        result = gmail_service.users().messages().list(maxResults=amount, userId='me').execute()
+        result = gmail_service.users().messages().list(maxResults=amount, userId='me', includeSpamTrash=False).execute()
     else:
-        result = gmail_service.users().messages().list(maxResults=amount, userId='me', pageToken=NEXT_PAGE_TOKEN).execute()
+        result = gmail_service.users().messages().list(maxResults=amount, userId='me', includeSpamTrash=False, pageToken=NEXT_PAGE_TOKEN).execute()
     messages = result.get('messages')
     NEXT_PAGE_TOKEN = result.get('nextPageToken')
 
@@ -116,7 +116,7 @@ def parse_data(body, subject):
     Args:
         body        -> html data in cleartext
     Returns:
-        info        -> tuple of format (name, number, address)
+        info        -> list of format [name, number, address]
     """
     info = ['', '', '']
     # First try for phone number in plain text
@@ -198,7 +198,7 @@ def parse_data(body, subject):
             info[2] = item
     if info[1] == '':
         print(body)
-    return tuple(info)
+    return info
 
 def decode(text):
     """ Takes raw email data text and decodes it
@@ -263,6 +263,9 @@ def post_processing(info):
     if '*' in info[2]:
         info[2] = re.sub(r'\*.*', '', info[2])
 
+    if info[3]:
+        info[3] = re.sub(r' \+\d\d\d\d', '', info[3])
+
     return info
 
 def write_to_sheet(sheets_service, info):
@@ -286,7 +289,7 @@ def write_to_sheet(sheets_service, info):
     print(info)
     # Iterate through rows to find an empty one
     while(1):
-        cells = 'A' + str(SHEET_ROW) + ':C' + str(SHEET_ROW)
+        cells = 'A' + str(SHEET_ROW) + ':D' + str(SHEET_ROW)
         # Try except to avoid error on rate limit
         try:
             result = sheets_service.spreadsheets().values().get(
@@ -297,7 +300,7 @@ def write_to_sheet(sheets_service, info):
             continue
         # If no 'values' key in response, write info tuple to that row
         if 'values' not in result:
-            values = [[info[0], info[1], info[2]]]
+            values = [[info[0], info[1], info[2], info[3]]]
             body = {'values':values}
             result = sheets_service.spreadsheets().values().update(
                 spreadsheetId=SHEET_ID, range=cells,
@@ -348,6 +351,8 @@ def filter_messages(messages, gmail_service, sheets_service):
             # Try-except to handle errors that may terminate program
             try:
                 info = parse_data(message_body, subject)
+                if date:
+                    info.append(date)
                 # Attempts to write to Google Sheets and puts email in trash if successful
                 if write_to_sheet(sheets_service, info):
                     # gmail_service.users().messages().trash(userId='me', id=msg['id']).execute()
