@@ -7,3 +7,7 @@ Files:
     parse_inbox.py  ->  Main file, takes in user input on number of messages to parse and proceeds appropriately
 
 Note: Must already have a Google Sheets document and ID hard coded into the program (variable called "SHEETS_ID")
+
+Depedencies:
+    - pip install requests
+    - pip install --upgrade google-api-python-client google-auth-httplib2 google-auth-oauthlib
