@@ -264,7 +264,7 @@ def post_processing(info):
         info[2] = re.sub(r'\*.*', '', info[2])
 
     if info[3]:
-        info[3] = re.sub(r' \+\d\d\d\d', '', info[3])
+        info[3] = re.sub(r' [\+-]\d\d\d\d', '', info[3])
 
     return info
 
