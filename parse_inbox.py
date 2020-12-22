@@ -355,8 +355,7 @@ def filter_messages(messages, gmail_service, sheets_service):
                     info.append(date)
                 # Attempts to write to Google Sheets and puts email in trash if successful
                 if write_to_sheet(sheets_service, info):
-                    # gmail_service.users().messages().trash(userId='me', id=msg['id']).execute()
-                    pass
+                    gmail_service.users().messages().trash(userId='me', id=msg['id']).execute()
             except:
                 print('Error processing message #' + str(MESSAGE_COUNT))
 
