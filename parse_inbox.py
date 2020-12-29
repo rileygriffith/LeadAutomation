@@ -265,6 +265,7 @@ def post_processing(info):
 
     if info[3]:
         info[3] = re.sub(r' [\+-]\d\d\d\d', '', info[3])
+        info[3] = re.sub(r'\w\w\w, ', '', info[3])
 
     return info
 
