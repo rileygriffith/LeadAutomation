@@ -18,7 +18,8 @@ FILTERS = ['office@triumphpm.com', 'tpmassistant@triumphpm.com', 'wasim@faranesh
 
 PMCONTACTS = ['office@triumphpm.com', 'leasingagents@triumphpm.com', 'Office@triumphpm.com',
                 'guestcards@appfolio.com', 'contact@triumphpm.com', '(702) 367-2323', '(702) 816-8090',
-                '(702) 250-5958', '(888) 658-7368', 'Lorraine@iresvegas.com', 'lorraine@iresvegas.com']
+                '(702) 250-5958', '(888) 658-7368', 'Lorraine@iresvegas.com', 'lorraine@iresvegas.com',
+                '702-902-4304', 'RentalFeedConnect@zillowgroup.com', 'rentalapplications@zillow.com']
 
 SHEET_ID = '1Yfl1stekowIhbVqM5ofSzb4We7Z69n7_eoELsEQlOY4'
 
@@ -156,9 +157,16 @@ def parse_data(body, subject):
                     info[1] = matches[0]
         # Try second hyperlink format (link.edgepilot) if no matches for previous
         matches = CONTACT_URL_PATTERN2.findall(body)
-        if matches:
+        if matches and info[1] == '':
             contact_url = matches[0]
-            r = requests.get(contact_url)
+            try:
+                r = requests.get(contact_url)
+            except:
+                CONTACT_URL_PATTERN3 = re.compile(r'"(https://link.edgepilot.com.*https://www.zillow.com/rental-manager/inquiry-contact.*)"><u')
+                matches = CONTACT_URL_PATTERN3.findall(body)
+                if matches:
+                    contact_url = matches[0]
+                    r = requests.get(contact_url)
             # For this format redirect link is encrypted in base64, must decrypt
             matches = EDGEPILOT_PATTERN.findall(r.text)
             if matches:
@@ -196,8 +204,6 @@ def parse_data(body, subject):
     for item in matches[0]:
         if item != '':
             info[2] = item
-    if info[1] == '':
-        print(body)
     return info
 
 def decode(text):
@@ -357,6 +363,7 @@ def filter_messages(messages, gmail_service, sheets_service):
                 # Attempts to write to Google Sheets and puts email in trash if successful
                 if write_to_sheet(sheets_service, info):
                     gmail_service.users().messages().trash(userId='me', id=msg['id']).execute()
+                    
             except:
                 print('Error processing message #' + str(MESSAGE_COUNT))
 
