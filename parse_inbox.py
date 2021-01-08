@@ -303,6 +303,7 @@ def write_to_sheet(sheets_service, info):
                 spreadsheetId=SHEET_ID, range=cells).execute()
         except:
             print('Rate limit hit. Will wait 5 seconds and try again')
+            SHEET_ROW += 20
             time.sleep(5)
             continue
         # If no 'values' key in response, write info tuple to that row
