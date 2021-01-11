@@ -354,10 +354,10 @@ def filter_messages(messages, gmail_service, sheets_service):
             print('Sender: ' + sender)
             print('Date: ' + date)
             print('Subject: ' + subject + '\n')
-            message_body = read_message(payload)
             # Call parse_data function to extract contact information, and address of inquiry
             # Try-except to handle errors that may terminate program
             try:
+                message_body = read_message(payload)
                 info = parse_data(message_body, subject)
                 if date:
                     info.append(date)
