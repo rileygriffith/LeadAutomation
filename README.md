@@ -16,6 +16,6 @@ Depedencies:
     
     - pip install --upgrade google-api-python-client google-auth-httplib2 google-auth-oauthlib
 
-To Use:
+To Use, double click batch file or run:
 
     python leads.py
