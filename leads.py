@@ -30,6 +30,11 @@ CONTACT_PATTERN_1 = re.compile(r'%26phone=(.*)%26date')
 CONTACT_PATTERN_2 = re.compile(r".*?(\(\d{3}\D{0,3}\d{3}\D{0,3}\d{4}).*?", re.S)
 CONTACT_PATTERN_3 = re.compile(r'phone=(.*?)&date=', re.DOTALL)
 CONTACT_PATTERN_4 = re.compile(r'\r\n(\d{3}-\d{3}-\d{4})\r\n')
+CONTACT_PATTERN_5 = re.compile(r'&amp;phone=(.*?)&amp')
+EMAIL_PATTERN_1 = re.compile(r'\r\n(.*)<mailto:.*?>')
+EMAIL_PATTERN_2 = re.compile(r'<a href="mailto:(.*?)">')
+EMAIL_PATTERN_3 = re.compile(r'\r\n(.*?@.*?)\r\nCOMMENTS')
+EMAIL_PATTERN_4 = re.compile(r'\r\n> (.*?@.*?)\r\n> COMMENTS')
 ADDRESS_PATTERN_1 = re.compile(' about (.*)')
 ADDRESS_PATTERN_2 = re.compile(' for (.*)')
 ADDRESS_PATTERN_3 = re.compile(' in (.*)')
@@ -44,6 +49,8 @@ BODY_NAME_1 = re.compile(r'\r\n\r\n\r\n(.*)\r\n\(?\d\d\d\)?')
 BODY_NAME_2 = re.compile(r'CONTACT INFO\r\n\r\n(.*?)<https://link.edgepilot')
 BODY_NAME_3 = re.compile(r'</b> (.*) &lt;guestcards')
 BODY_NAME_4 = re.compile(r'Lead (.*) found you through RentPath')
+BODY_NAME_5 = re.compile(r'&amp;name=(.*?)&amp')
+BODY_NAME_6 = re.compile(r'From: (.*?) <guestcards@appfolio.com>')
 
 # Global Variables
 SHEET_ROW = 1
@@ -161,13 +168,11 @@ def get_name(body, subject):
     if matches:
         return matches[0]
 
-    BODY_NAME_5 = re.compile(r'&amp;name=(.*?)&amp')
     matches = BODY_NAME_5.findall(body)
     if matches and '%20' in matches[0]:
         matches[0] = re.sub('%20', ' ', matches[0])
         return matches[0]
 
-    BODY_NAME_6 = re.compile(r'From: (.*?) <guestcards@appfolio.com>')
     matches = BODY_NAME_6.findall(body)
     if matches:
         return matches[0]
@@ -202,7 +207,6 @@ def get_contact(body):
             if match not in PMCONTACTS:
                 return match
 
-    CONTACT_PATTERN_5 = re.compile(r'&amp;phone=(.*?)&amp')
     matches = CONTACT_PATTERN_5.findall(body)
     if matches:
         for match in matches:
@@ -210,15 +214,26 @@ def get_contact(body):
                 return match
 
     # Try getting email contact
-    EMAIL_PATTERN_1 = re.compile(r'\r\n(.*)<mailto:.*?>')
+    
     matches = EMAIL_PATTERN_1.findall(body)
     if matches:
         for match in matches:
             if match not in PMCONTACTS:
                 return match
 
-    EMAIL_PATTERN_2 = re.compile(r'<a href="mailto:(.*?)">')
     matches = EMAIL_PATTERN_2.findall(body)
+    if matches:
+        for match in matches:
+            if match not in PMCONTACTS:
+                return match
+
+    matches = EMAIL_PATTERN_3.findall(body)
+    if matches:
+        for match in matches:
+            if match not in PMCONTACTS:
+                return match
+
+    matches = EMAIL_PATTERN_4.findall(body)
     if matches:
         for match in matches:
             if match not in PMCONTACTS:
