@@ -35,10 +35,11 @@ EMAIL_PATTERN_1 = re.compile(r'\r\n(.*)<mailto:.*?>')
 EMAIL_PATTERN_2 = re.compile(r'<a href="mailto:(.*?)">')
 EMAIL_PATTERN_3 = re.compile(r'\r\n(.*?@.*?)\r\nCOMMENTS')
 EMAIL_PATTERN_4 = re.compile(r'\r\n> (.*?@.*?)\r\n> COMMENTS')
-ADDRESS_PATTERN_1 = re.compile(' about (.*)')
-ADDRESS_PATTERN_2 = re.compile(' for (.*)')
-ADDRESS_PATTERN_3 = re.compile(' in (.*)')
+ADDRESS_PATTERN_1 = re.compile(r' about (.*)')
+ADDRESS_PATTERN_2 = re.compile(r' for (.*)')
+ADDRESS_PATTERN_3 = re.compile(r' in (.*)')
 ADDRESS_PATTERN_4 = re.compile(r' Lead for (.*) from ')
+ADDRESS_PATTERN_5 = re.compile(r' to tour (.*)')
 SUBJECT_NAME_1 = re.compile(r'FW: (.*) is requesting')
 SUBJECT_NAME_2 = re.compile(r'Fwd: (.*) is requesting')
 SUBJECT_NAME_3 = re.compile(r'New Lead: (.*) interested')
@@ -116,10 +117,8 @@ def check_headers(sender, date, subject):
         boolean     -> True if email is lead, False otherwise
     """
     if sender in FILTERS:
-        matches1 = ADDRESS_PATTERN_1.findall(subject)
-        matches2 = ADDRESS_PATTERN_2.findall(subject)
-        matches3 = ADDRESS_PATTERN_3.findall(subject)
-        if matches1 or matches2 or matches3:
+        address = get_address('', subject)
+        if address != '':
             return True
     
     return False
@@ -257,6 +256,10 @@ def get_address(body, subject):
         return matches[0]
     
     matches = ADDRESS_PATTERN_4.findall(subject)
+    if matches:
+        return matches[0]
+
+    matches = ADDRESS_PATTERN_5.findall(subject)
     if matches:
         return matches[0]
 
