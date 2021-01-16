@@ -31,10 +31,13 @@ CONTACT_PATTERN_2 = re.compile(r".*?(\(\d{3}\D{0,3}\d{3}\D{0,3}\d{4}).*?", re.S)
 CONTACT_PATTERN_3 = re.compile(r'phone=(.*?)&date=', re.DOTALL)
 CONTACT_PATTERN_4 = re.compile(r'\r\n(\d{3}-\d{3}-\d{4})\r\n')
 CONTACT_PATTERN_5 = re.compile(r'&amp;phone=(.*?)&amp')
+CONTACT_PATTERN_6 = re.compile(r'\r\n> PHONE\r\n> (.*)\r\n')
 EMAIL_PATTERN_1 = re.compile(r'\r\n(.*)<mailto:.*?>')
 EMAIL_PATTERN_2 = re.compile(r'<a href="mailto:(.*?)">')
 EMAIL_PATTERN_3 = re.compile(r'\r\n(.*?@.*?)\r\nCOMMENTS')
 EMAIL_PATTERN_4 = re.compile(r'\r\n> (.*?@.*?)\r\n> COMMENTS')
+EMAIL_PATTERN_5 = re.compile(r'3D>\r\n(.*)\r\n\r\nCOMMENTS')
+EMAIL_PATTERN_6 = re.compile(r'3D>\r\n(.*)\r\n')
 ADDRESS_PATTERN_1 = re.compile(r' about (.*)')
 ADDRESS_PATTERN_2 = re.compile(r' for (.*)')
 ADDRESS_PATTERN_3 = re.compile(r' in (.*)')
@@ -212,6 +215,12 @@ def get_contact(body):
             if match not in PMCONTACTS:
                 return match
 
+    matches = CONTACT_PATTERN_6.findall(body)
+    if matches:
+        for match in matches:
+            if match not in PMCONTACTS:
+                return match
+
     # Try getting email contact
     
     matches = EMAIL_PATTERN_1.findall(body)
@@ -236,6 +245,18 @@ def get_contact(body):
     if matches:
         for match in matches:
             if match not in PMCONTACTS:
+                return match
+
+    matches = EMAIL_PATTERN_5.findall(body)
+    if matches:
+        for match in matches:
+            if match not in PMCONTACTS:
+                return match
+
+    matches = EMAIL_PATTERN_6.findall(body)
+    if matches:
+        for match in matches:
+            if match not in PMCONTACTS and '@' in match:
                 return match
 
     print("Could not get phone number")
@@ -263,7 +284,8 @@ def get_address(body, subject):
     if matches:
         return matches[0]
 
-    print('Could not get address')
+    #TODO: Add support for "AG Lead from first last (address)" subject lines
+
     return ''
 
 def parse_data(body, subject):
@@ -339,6 +361,8 @@ def post_processing(info):
         info[0] = info[0].replace(' - yahoo', '')
     if 'Automatic reply:' in info[0]:
         info[0] = info[0].replace('Automatic reply: ', '')
+    if '@' in info[0]:
+        info[0] = re.sub(r'(@.*)', '', info[0])
 
     if info[0] in PMCONTACTS:
         info[0] = 'No name provided'
