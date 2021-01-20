@@ -503,7 +503,7 @@ def filter_messages(messages, gmail_service, sheets_service, drive_service):
             w.writeframesraw(audio_data)
             w.close()
             # Upload file to shared Google Drive folder
-            metadata = {'name':DATE, 'parents':[DRIVE_ID]}
+            metadata = {'name':DATE + '.wav', 'parents':[DRIVE_ID]}
             media = MediaFileUpload('temp_audio.wav', mimetype='audio/wav')
             try:
                 drive_service.files().create(body=metadata, media_body=media, fields='id').execute()
