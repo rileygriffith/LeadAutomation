@@ -486,7 +486,7 @@ def filter_messages(messages, gmail_service, sheets_service, drive_service):
                 print('Error processing message #' + str(MESSAGE_COUNT) + '\n')
         # If message is a voicemail
         if sender == 'VirtualOfficeVoiceMails@8x8.com':
-            print('------Voicemail Lead Found------')
+            print('------Voicemail Lead Found in Message #' + str(MESSAGE_COUNT) + '------')
             # Get ID of attachment
             for part in payload['parts']:
                 if part['mimeType'] == 'audio/x-wav':
