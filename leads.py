@@ -9,7 +9,7 @@ import datetime
 import json
 
 import wave
-import speech_recognition as sr
+# import speech_recognition as sr
 
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaFileUpload
