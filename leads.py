@@ -20,7 +20,8 @@ from google.auth.transport.requests import Request
 SCOPES = ['https://mail.google.com/', 'https://www.googleapis.com/auth/spreadsheets', 'https://www.googleapis.com/auth/drive']
 FILTERS = ['office@triumphpm.com', 'tpmassistant@triumphpm.com', 'wasim@faraneshlv.com', 'lorraine@iresvegas.com',
             'leasing@total-re.com', 'juli@market1realty.com', 'yourrealtorbrian@gmail.com', 'jackie.akester@gmail.com',
-            'peacerealtylv@gmail.com', 'rentvegasnow@gmail.com', 'JDutt@mcgareycampagroup.com', 'morrisamortensen@gmail.com']
+            'peacerealtylv@gmail.com', 'rentvegasnow@gmail.com', 'JDutt@mcgareycampagroup.com', 'morrisamortensen@gmail.com',
+            'leasing@faraneshlv.com']
 
 PMCONTACTS = ['office@triumphpm.com', 'leasingagents@triumphpm.com', 'Office@triumphpm.com',
                 'guestcards@appfolio.com', 'contact@triumphpm.com', '(702) 367-2323', '(702) 816-8090',
@@ -50,12 +51,14 @@ ADDRESS_PATTERN_2 = re.compile(r' for (.*)')
 ADDRESS_PATTERN_3 = re.compile(r' in (.*)')
 ADDRESS_PATTERN_4 = re.compile(r' Lead for (.*) from ')
 ADDRESS_PATTERN_5 = re.compile(r' to tour (.*)')
+ADDRESS_PATTERN_6 = re.compile(r' \((.*)\)')
 SUBJECT_NAME_1 = re.compile(r'FW: (.*) is requesting')
 SUBJECT_NAME_2 = re.compile(r'Fwd: (.*) is requesting')
 SUBJECT_NAME_3 = re.compile(r'New Lead: (.*) interested')
 SUBJECT_NAME_4 = re.compile(r'Re: (.*) is requesting')
 SUBJECT_NAME_5 = re.compile(r'Lead from (.*) \(')
 SUBJECT_NAME_6 = re.compile(r'from (.*) - ')
+SUBJECT_NAME_7 = re.compile(r'AG Lead from (.*) \(')
 BODY_NAME_1 = re.compile(r'\r\n\r\n\r\n(.*)\r\n\(?\d\d\d\)?')
 BODY_NAME_2 = re.compile(r'CONTACT INFO\r\n\r\n(.*?)<https://link.edgepilot')
 BODY_NAME_3 = re.compile(r'</b> (.*) &lt;guestcards')
@@ -158,6 +161,10 @@ def get_name(body, subject):
         return matches[0]
     
     matches = SUBJECT_NAME_6.findall(subject)
+    if matches:
+        return matches[0]
+
+    matches = SUBJECT_NAME_7.findall(subject)
     if matches:
         return matches[0]
 
@@ -292,7 +299,9 @@ def get_address(body, subject):
     if matches:
         return matches[0]
 
-    #TODO: Add support for "AG Lead from first last (address)" subject lines
+    matches = ADDRESS_PATTERN_6.findall(subject)
+    if matches:
+        return matches[0]
 
     return ''
 
