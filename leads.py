@@ -21,7 +21,7 @@ SCOPES = ['https://mail.google.com/', 'https://www.googleapis.com/auth/spreadshe
 FILTERS = ['office@triumphpm.com', 'tpmassistant@triumphpm.com', 'wasim@faraneshlv.com', 'lorraine@iresvegas.com',
             'leasing@total-re.com', 'juli@market1realty.com', 'yourrealtorbrian@gmail.com', 'jackie.akester@gmail.com',
             'peacerealtylv@gmail.com', 'rentvegasnow@gmail.com', 'JDutt@mcgareycampagroup.com', 'morrisamortensen@gmail.com',
-            'leasing@faraneshlv.com', 'hello@faraneshlv.com']
+            'leasing@faraneshlv.com', 'hello@faraneshlv.com', 'lorraine@peacerealtylv.com', 'stacy.bandgrealty@gmail.com']
 
 PMCONTACTS = ['office@triumphpm.com', 'leasingagents@triumphpm.com', 'Office@triumphpm.com',
                 'guestcards@appfolio.com', 'contact@triumphpm.com', '(702) 367-2323', '(702) 816-8090',
