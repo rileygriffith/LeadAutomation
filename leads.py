@@ -18,10 +18,7 @@ from google.auth.transport.requests import Request
 
 # Constants
 SCOPES = ['https://mail.google.com/', 'https://www.googleapis.com/auth/spreadsheets', 'https://www.googleapis.com/auth/drive']
-FILTERS = ['office@triumphpm.com', 'tpmassistant@triumphpm.com', 'wasim@faraneshlv.com', 'lorraine@iresvegas.com',
-            'leasing@total-re.com', 'juli@market1realty.com', 'yourrealtorbrian@gmail.com', 'jackie.akester@gmail.com',
-            'peacerealtylv@gmail.com', 'rentvegasnow@gmail.com', 'JDutt@mcgareycampagroup.com', 'morrisamortensen@gmail.com',
-            'leasing@faraneshlv.com', 'hello@faraneshlv.com', 'lorraine@peacerealtylv.com', 'stacy.bandgrealty@gmail.com']
+FILTERS = None
 
 PMCONTACTS = ['office@triumphpm.com', 'leasingagents@triumphpm.com', 'Office@triumphpm.com',
                 'guestcards@appfolio.com', 'contact@triumphpm.com', '(702) 367-2323', '(702) 816-8090',
@@ -444,7 +441,7 @@ def write_to_sheet(sheets_service, info):
             break
     return True
 
-def filter_messages(messages, gmail_service, sheets_service, drive_service):
+def filter_messages(messages, gmail_service, sheets_service):
     """ Takes list of message objects and performs appropriate operations
         on each
     Args:
@@ -495,48 +492,8 @@ def filter_messages(messages, gmail_service, sheets_service, drive_service):
                     print("Successfully added contact to spreadsheet\n")
             except:
                 print('Error processing message #' + str(MESSAGE_COUNT) + '\n')
-        # If message is a voicemail
-        if sender == 'VirtualOfficeVoiceMails@8x8.com':
-            print('------Voicemail Lead Found in Message #' + str(MESSAGE_COUNT) + '------')
-            # Get ID of attachment
-            for part in payload['parts']:
-                if part['mimeType'] == 'audio/x-wav':
-                    att_id = part['body']['attachmentId']
-            # Get audio binary and save to file
-            audio_binary = gmail_service.users().messages().attachments().get(userId='me', messageId=msg['id'], id=att_id).execute()
-            audio_data = base64.urlsafe_b64decode(audio_binary['data'].encode('UTF-8'))
-            w = wave.open('temp_audio.wav', 'w')
-            w.setnchannels(1)
-            w.setsampwidth(2)
-            w.setframerate(8000)
-            w.writeframesraw(audio_data)
-            w.close()
-            # Upload file to shared Google Drive folder
-            metadata = {'name':DATE + '.wav', 'parents':[DRIVE_ID]}
-            media = MediaFileUpload('temp_audio.wav', mimetype='audio/wav')
-            try:
-                drive_service.files().create(body=metadata, media_body=media, fields='id').execute()
-                gmail_service.users().messages().trash(userId='me', id=msg['id']).execute()
-                print('Added voicemail Lead to Google Drive\n')
-            except:
-                print('There was a problem adding the voicemail to Google Drive\n')
-            """
-            # Use voice recognition to get voicemail string (POOR ACCURACY FOR VOICEMAILS)
-            r = sr.Recognizer()
-            r.pause_threshold = 10
-            r.non_speaking_duration = 10
-            with sr.AudioFile('temp_audio.wav') as source:
-                audio = r.record(source)
-                try:
-                    transcript = r.recognize_google(audio)
-                    print(transcript)
-                except:
-                    print('Could not transcribe audio')
-                print('')
-            """
 
 def main():
-    number_to_fetch = input("How many recent emails should be processed: ")
     # Authenticate with user and get credentials
     try:
         creds = authenticate()
@@ -544,20 +501,28 @@ def main():
         os.remove('token.pickle')
         print("Credentials have expired, please run the program again")
     # Connect to Gmail API and use service object to retrieve messages
+    print("Connecting to Gmail...")
     gmail_service = build('gmail', 'v1', credentials=creds)
+    print("Connecting to Google Sheets...")
     sheets_service = build('sheets', 'v4', credentials=creds)
-    drive_service = build('drive', 'v3', credentials=creds)
+    result = sheets_service.spreadsheets().values().get(
+        spreadsheetId="16E_JTG8q2f4YvJCiTGPWsovyOmruPxEvSoutMjtttEo", range="Sheet1!A:A").execute()
+    global FILTERS
+    FILTERS = [item for sublist in result.get('values') for item in sublist]
+    print("Successfully acquired property manager contact list")
+
     # If less than 500 messages requested
+    number_to_fetch = input("How many recent emails should be processed: ")
     remaining = int(number_to_fetch)
     if remaining <= 500 and remaining > 0:
         messages = get_messages(gmail_service, str(remaining))
-        filter_messages(messages, gmail_service, sheets_service, drive_service)
+        filter_messages(messages, gmail_service, sheets_service)
     # Gmail API messages GET call returns maximum of 500 messages
     # In this case we need multiple iterations
     elif remaining > 500:
         for _ in range(int(remaining/500)):
             messages = get_messages(gmail_service, str(remaining))
-            filter_messages(messages, gmail_service, sheets_service, drive_service)
+            filter_messages(messages, gmail_service, sheets_service)
             remaining -= 500
     else:
         print('Invalid input. Exiting program...')
