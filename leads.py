@@ -25,7 +25,8 @@ PMCONTACTS = ['office@triumphpm.com', 'leasingagents@triumphpm.com', 'Office@tri
                 '(702) 250-5958', '(888) 658-7368', 'Lorraine@iresvegas.com', 'lorraine@iresvegas.com',
                 '702-902-4304', 'RentalFeedConnect@zillowgroup.com', 'rentalapplications@zillow.com',
                 '(702) 265-5604', '(702)%2047823', '(702)%2050146', '702-478-2360', '702-501-4649',
-                '702-550-2222', '702-367-2323', '725-222-3015', 'VirtualOfficeVoiceMails@8x8.com']
+                '702-550-2222', '702-367-2323', '725-222-3015', 'VirtualOfficeVoiceMails@8x8.com',
+                '(702) 992-7590', '(702) 992-7859']
 
 SHEET_ID = '1Yfl1stekowIhbVqM5ofSzb4We7Z69n7_eoELsEQlOY4'
 DRIVE_ID = '1ZrK2q5hz0zbbNpbhsHELmVOlisaVACx4'
